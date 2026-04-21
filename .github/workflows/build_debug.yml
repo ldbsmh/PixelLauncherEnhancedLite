@@ -6,7 +6,6 @@ on:
 jobs:
   build:
     name: Build Debug APK
-    if: github.repository_owner == 'hxreborn'
     runs-on: ubuntu-latest
 
     steps:
