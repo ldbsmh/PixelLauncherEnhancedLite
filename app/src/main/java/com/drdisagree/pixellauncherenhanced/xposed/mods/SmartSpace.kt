@@ -70,44 +70,47 @@ class SmartSpace(
 
         launcherAppStateClass.hookConstructor().runAfter { param ->
             if (!hideQuickspace || quickspaceListenerRegistered) return@runAfter
-
+        
             val context = param.thisObject.getAnyField("mContext", "context") as Context
             val mModel = param.thisObject.getAnyField("mModel", "model")
-
+        
             // Doesn't exist in Android 16 beta 4+
             val mOnTerminateCallback = param.thisObject.getFieldSilently("mOnTerminateCallback")
-
+        
             val firstPagePinnedItemListener =
-                SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+                SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                     if (SMARTSPACE_ON_HOME_SCREEN == key) {
                         mModel.callMethod("forceReload")
                     }
                 }
-
+        
             val launcherPrefs =
                 try {
                     launcherPrefsClass.callStaticMethod("getPrefs", context)
                 } catch (_: Throwable) {
                     launcherPrefsCompanionClass.callStaticMethod("getPrefs", context)
                 }
-
+        
             launcherPrefs.callMethod(
                 "registerOnSharedPreferenceChangeListener",
                 firstPagePinnedItemListener,
             )
-            quickspaceListenerRegistered = true
+        
+            if (mOnTerminateCallback != null) {
+                mOnTerminateCallback.callMethod(
+                    "add",
+                    Runnable {
+                        launcherPrefs.callMethod(
+                            "unregisterOnSharedPreferenceChangeListener",
+                            firstPagePinnedItemListener,
+                        )
+                        quickspaceListenerRegistered = false
+                    },
+                )
+            }
 
-            mOnTerminateCallback.callMethod(
-                "add",
-                Runnable {
-                    launcherPrefs.callMethod(
-                        "unregisterOnSharedPreferenceChangeListener",
-                        firstPagePinnedItemListener,
-                    )
-                    quickspaceListenerRegistered = false
-                },
-            )
-        }
+    quickspaceListenerRegistered = true
+}
 
         val modelCallbacksClass =
             findClass(
